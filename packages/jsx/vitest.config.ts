@@ -12,4 +12,10 @@ export default defineConfig({
       '@@': path.resolve(__dirname, './__tests__'),
     },
   },
+  test: {
+    coverage: {
+      reporter: ['lcov', 'html'],
+      reportsDirectory: './coverage',
+    },
+  },
 });

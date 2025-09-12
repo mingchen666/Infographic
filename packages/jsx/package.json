@@ -30,7 +30,7 @@
   "scripts": {
     "build": "tsc",
     "ci": "run-s test build",
-    "test": "vitest --run",
+    "test": "vitest --run --coverage",
     "watch": "tsc -w"
   },
   "devDependencies": {

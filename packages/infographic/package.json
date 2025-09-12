@@ -1,0 +1,21 @@
+{
+  "name": "@antv/infographic",
+  "version": "0.0.1",
+  "description": "AntV Infographic generator and visualization library",
+  "keywords": [
+    "antv",
+    "infographic",
+    "visualization"
+  ],
+  "license": "MIT",
+  "author": "Aarebecca",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@antv/infographic-jsx": "workspace:^"
+  },
+  "devDependencies": {}
+}

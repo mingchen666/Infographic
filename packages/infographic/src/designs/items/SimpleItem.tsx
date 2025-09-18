@@ -3,7 +3,7 @@ import { ComponentType, getElementBounds, Group } from '@antv/infographic-jsx';
 import { ItemDesc, ItemIcon, ItemLabel } from '../components';
 import { FlexLayout } from '../layouts';
 import type { BaseItemProps } from './types';
-import { getItemId, getItemProps } from './utils';
+import { getItemProps } from './utils';
 
 export interface SimpleItemProps extends BaseItemProps {
   width?: number;
@@ -14,7 +14,7 @@ export interface SimpleItemProps extends BaseItemProps {
 export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
   const [
     {
-      indexes = [],
+      indexes,
       datum,
       width = 200,
       gap = 4,
@@ -37,10 +37,24 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
 
   const textAlign = getTextAlign(positionH);
 
+  const labelContent = (
+    <ItemLabel
+      indexes={indexes}
+      width={width}
+      alignHorizontal="center"
+      alignVertical="center"
+    >
+      {label}
+    </ItemLabel>
+  );
+  const labelBounds = getElementBounds(labelContent);
+  const iconContent = <ItemIcon indexes={indexes} size={iconSize} />;
+
   if (!icon) {
     return (
       <Group {...restProps}>
         <ItemLabel
+          indexes={indexes}
           width={width}
           alignHorizontal={textAlign}
           alignVertical="center"
@@ -48,8 +62,9 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
           {label}
         </ItemLabel>
         <ItemDesc
+          indexes={indexes}
           width={width}
-          y={getElementBounds(<ItemLabel width={width} />).height + gap}
+          y={labelBounds.height + gap}
           alignHorizontal={textAlign}
           alignVertical={getDescVerticalAlign(positionV, false)}
         >
@@ -58,18 +73,6 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
       </Group>
     );
   }
-
-  const labelContent = (
-    <ItemLabel
-      id={getItemId(indexes, 'label')}
-      width={width}
-      alignHorizontal="center"
-      alignVertical="center"
-    >
-      {label}
-    </ItemLabel>
-  );
-  const iconContent = <ItemIcon id={getItemId(indexes, 'icon')} size={iconSize} />;
 
   if (positionH === 'center') {
     return (
@@ -84,9 +87,9 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
             <Group>
               {labelContent}
               <ItemDesc
-                id={getItemId(indexes, 'desc')}
+                indexes={indexes}
                 width={width}
-                y={getElementBounds(<ItemLabel width={width} />).height + gap}
+                y={labelBounds.height + gap}
                 alignHorizontal="center"
                 alignVertical="bottom"
               >
@@ -101,9 +104,9 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
             <Group>
               {labelContent}
               <ItemDesc
-                id={getItemId(indexes, 'desc')}
+                indexes={indexes}
                 width={width}
-                y={getElementBounds(<ItemLabel width={width} />).height + gap}
+                y={labelBounds.height + gap}
                 alignHorizontal="center"
                 alignVertical="top"
               >
@@ -116,7 +119,7 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
     );
   }
 
-  const iconBounds = getElementBounds(<ItemIcon size={iconSize} />);
+  const iconBounds = getElementBounds(iconContent);
   const textWidth = Math.max(width - iconBounds.width - gap, 0);
 
   return (
@@ -130,6 +133,7 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
         <>
           <Group>
             <ItemLabel
+              indexes={indexes}
               width={textWidth}
               alignHorizontal="right"
               alignVertical="center"
@@ -137,21 +141,23 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
               {label}
             </ItemLabel>
             <ItemDesc
+              indexes={indexes}
               width={textWidth}
-              y={getElementBounds(<ItemLabel width={textWidth} />).height + gap}
+              y={labelBounds.height + gap}
               alignHorizontal="right"
               alignVertical={getDescVerticalAlign(positionV, true)}
             >
               {desc}
             </ItemDesc>
           </Group>
-          <ItemIcon size={iconSize} />
+          {iconContent}
         </>
       ) : (
         <>
-          <ItemIcon size={iconSize} />
+          {iconContent}
           <Group>
             <ItemLabel
+              indexes={indexes}
               width={textWidth}
               alignHorizontal="left"
               alignVertical="center"
@@ -159,8 +165,9 @@ export const SimpleItem: ComponentType<SimpleItemProps> = (props) => {
               {label}
             </ItemLabel>
             <ItemDesc
+              indexes={indexes}
               width={textWidth}
-              y={getElementBounds(<ItemLabel width={textWidth} />).height + gap}
+              y={labelBounds.height + gap}
               alignHorizontal="left"
               alignVertical={getDescVerticalAlign(positionV, true)}
             >

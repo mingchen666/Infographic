@@ -56,12 +56,15 @@ export const ListColumn: ComponentType<ListColumnProps> = (props) => {
       />,
     );
 
+    const btnAddY =
+      index === 0 ? -btnBounds.height : itemY - gap / 2 - btnBounds.height / 2;
+
     btnElements.push(
       <BtnAdd
         indexKey={indexKey}
         id={`btn-add-${indexKey}`}
         x={btnAddX}
-        y={itemY - btnBounds.height}
+        y={btnAddY}
       />,
     );
   });

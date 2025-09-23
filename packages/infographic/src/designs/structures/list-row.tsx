@@ -14,23 +14,24 @@ export const ListRow: ComponentType<ListRowProps> = (props) => {
   const { Title, Item, data, gap = 20 } = props;
   const { title, desc, items = [] } = data;
 
-  let height = 480;
-
   const titleContent = Title ? <Title title={title} desc={desc} /> : null;
-  if (Title) {
-    const titleBounds = getElementBounds(titleContent);
-    height = titleBounds.height * 0.8;
-  }
 
   const btnBounds = getElementBounds(<BtnAdd indexKey={'1'} />);
   const itemBounds = getElementBounds(
-    <Item indexes={[0]} indexKey={'1'} data={data} datum={items[0]} />,
+    <Item
+      indexes={[0]}
+      indexKey={'1'}
+      data={data}
+      datum={items[0]}
+      positionH="center"
+    />,
   );
 
   const btnElements: JSXElement[] = [];
   const itemElements: JSXElement[] = [];
 
-  const btnAddY = (height - btnBounds.height) / 2;
+  const btnY = itemBounds.height;
+
   items.forEach((item, index) => {
     const indexKey = `${index + 1}`;
     const itemX = (itemBounds.width + gap) * index;
@@ -42,7 +43,6 @@ export const ListRow: ComponentType<ListRowProps> = (props) => {
         datum={item}
         data={data}
         x={itemX}
-        height={height}
         positionH="center"
       />,
     );
@@ -52,30 +52,36 @@ export const ListRow: ComponentType<ListRowProps> = (props) => {
         indexKey={indexKey}
         id={`btn-remove-${indexKey}`}
         x={itemX + (itemBounds.width - btnBounds.width) / 2}
-        y={-btnBounds.height - 10}
+        y={btnY}
       />,
     );
+
+    const btnAddX =
+      index === 0
+        ? -(gap + btnBounds.width) / 2
+        : itemX - (gap + btnBounds.width) / 2;
 
     btnElements.push(
       <BtnAdd
         indexKey={indexKey}
         id={`btn-add-${indexKey}`}
-        x={itemX - btnBounds.width}
-        y={btnAddY}
+        x={btnAddX}
+        y={btnY}
       />,
     );
   });
 
   if (items.length > 0) {
     const lastItemX = (itemBounds.width + gap) * (items.length - 1);
-    const extraAddBtnX = lastItemX + itemBounds.width;
+    const extraAddBtnX =
+      lastItemX + itemBounds.width + (gap - btnBounds.width) / 2;
 
     btnElements.push(
       <BtnAdd
         indexKey={`${items.length + 1}`}
         id={`btn-add-${items.length + 1}`}
         x={extraAddBtnX}
-        y={btnAddY}
+        y={btnY}
       />,
     );
   }

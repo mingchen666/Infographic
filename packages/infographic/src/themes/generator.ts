@@ -118,6 +118,7 @@ const addDerivedColors = (
 
   return {
     ...baseTheme,
+    isDarkMode,
     colorPrimaryBg: generatePrimaryBg(primaryColor, isDarkMode),
     colorText: textColor,
     colorTextSecondary: generateSecondaryTextColor(textColor),

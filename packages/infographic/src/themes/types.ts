@@ -11,11 +11,12 @@ export type DynamicItemAttribute<T extends object> = DynamicAttributes<
 >;
 
 export interface ThemeConfig {
+  colorBg?: string;
+  colorPrimary?: string;
   base?: {
     shape?: TextAttributes;
     text?: TextAttributes;
   };
-  background?: string;
   palette?: Palette;
   title?: TextAttributes;
   desc?: TextAttributes;
@@ -54,4 +55,6 @@ export interface ThemeColors {
   colorBg: string;
   /** 卡片背景色 */
   colorBgElevated: string;
+  /** 是否为暗色模式 */
+  isDarkMode: boolean;
 }

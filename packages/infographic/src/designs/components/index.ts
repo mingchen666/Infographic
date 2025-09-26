@@ -1,5 +1,6 @@
 export * from './Btn';
 export * from './BtnsGroup';
+export * from './Gap';
 export * from './Illus';
 export * from './ItemDesc';
 export * from './ItemIcon';

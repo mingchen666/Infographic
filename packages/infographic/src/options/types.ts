@@ -4,7 +4,7 @@ import type { Data, Padding } from '../types';
 
 export interface InfographicOptions {
   /** 容器，可以是选择器或者 HTMLElement */
-  container: string | HTMLElement;
+  container?: string | HTMLElement;
   /** 宽度 */
   width: number;
   /** 高度 */

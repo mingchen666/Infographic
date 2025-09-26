@@ -24,7 +24,7 @@ export class Infographic {
     container.replaceChildren(infographic);
   }
 
-  compose(): SVGSVGElement {
+  private compose(): SVGSVGElement {
     const { design, data } = this.parsedOptions;
     const { title, item, items, structure } = design;
     const { component: Structure, props: structureProps } = structure;

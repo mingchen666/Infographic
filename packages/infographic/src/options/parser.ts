@@ -15,7 +15,7 @@ export function parseOptions(
   options: InfographicOptions,
 ): ParsedInfographicOptions {
   const {
-    container,
+    container = '#container',
     padding = 0,
     template,
     design,

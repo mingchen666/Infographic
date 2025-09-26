@@ -7,6 +7,7 @@ import {
   getSizeBaseVal,
   isBtnsGroup,
   isDesc,
+  isGroup,
   isIllus,
   isItemDesc,
   isItemElement,
@@ -19,6 +20,7 @@ import {
   isItemValue,
   isShape,
   isShapeGroup,
+  isSVG,
   isText,
   isTitle,
   parsePadding,
@@ -106,7 +108,7 @@ function fill(svg: SVGSVGElement, options: ParsedInfographicOptions) {
   const { themeConfig, data } = options;
 
   const traverse = (element: SVGElement) => {
-    if (element instanceof SVGSVGElement) {
+    if (isSVG(element)) {
       renderSVG(svg, options);
 
       return Array.from(element.children).forEach((child) => {
@@ -212,7 +214,7 @@ function fill(svg: SVGSVGElement, options: ParsedInfographicOptions) {
       return renderStaticText(element, options);
     }
 
-    if (!(element instanceof SVGGElement)) {
+    if (!isGroup(element)) {
       return renderStaticShape(element, options);
     }
 

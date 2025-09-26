@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b",
-    "build:ssr": "vite-node ./src/ssr.tsx",
     "dev": "vite"
   },
   "dependencies": {

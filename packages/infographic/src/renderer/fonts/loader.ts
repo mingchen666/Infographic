@@ -53,7 +53,7 @@ export function loadFont(svg: SVGSVGElement, font: string) {
 
   if (!links.length) return;
 
-  if (target instanceof HTMLHeadElement) {
+  if (target.tagName === 'HEAD') {
     links.forEach((link) => target.appendChild(link));
   }
 }

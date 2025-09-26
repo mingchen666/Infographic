@@ -28,12 +28,16 @@ const REGEXP = {
 const is = (element: SVGElement, regexp: RegExp) => {
   return element.id ? regexp.test(element.id) : false;
 };
+export const isSVG = (element: any): element is SVGSVGElement =>
+  element instanceof SVGElement && element.tagName === 'svg';
 export const isTitle = (element: SVGElement) => is(element, REGEXP.title);
 export const isDesc = (element: SVGElement) => is(element, REGEXP.desc);
 export const isShape = (element: SVGElement) => is(element, REGEXP.shape);
 export const isIllus = (element: SVGElement) => is(element, REGEXP.illus);
-export const isText = (element: SVGElement) =>
-  element instanceof SVGTextElement;
+export const isText = (element: SVGElement): element is SVGTextElement =>
+  element instanceof SVGElement && element.tagName === 'text';
+export const isGroup = (element: SVGElement): element is SVGGElement =>
+  element instanceof SVGElement && element.tagName === 'g';
 export const isShapeGroup = (element: SVGElement) =>
   is(element, REGEXP.shapesGroup);
 export const isItemsGroup = (element: SVGElement) =>

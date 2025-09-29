@@ -1,6 +1,6 @@
 {
   "name": "@antv/infographic-jsx",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1-beta.2",
   "description": "JSX runtime for AntV Infographic",
   "keywords": [
     "antv",

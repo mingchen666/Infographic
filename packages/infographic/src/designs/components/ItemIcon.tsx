@@ -47,7 +47,12 @@ export const ItemIconCircle = (
   const prefix = `item-${getItemKeyFromIndexes(indexes)}`;
 
   return (
-    <Group {...restProps} width={width} height={width}>
+    <Group
+      {...restProps}
+      width={width}
+      height={width}
+      id={`${prefix}-group-icon`}
+    >
       <Ellipse width={width} height={width} id={`${prefix}-bg`} fill={fill} />
       <Rect {...iconProps} id={`${prefix}-icon`} />
     </Group>

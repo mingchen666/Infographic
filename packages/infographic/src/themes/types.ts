@@ -14,7 +14,7 @@ export interface ThemeConfig {
   colorBg?: string;
   colorPrimary?: string;
   base?: {
-    shape?: TextAttributes;
+    shape?: ShapeAttributes;
     text?: TextAttributes;
   };
   palette?: Palette;

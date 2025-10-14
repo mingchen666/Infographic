@@ -31,9 +31,10 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "build": "vite build && tsc --build --force --emitDeclarationOnly",
     "build:test": "tsc --noEmit -p __tests__",
     "ci": "run-s test build lint",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "lint": "eslint . --ext .ts,.tsx && npm run build:test",
     "test": "vitest --run --coverage",
     "watch": "vite build --watch"

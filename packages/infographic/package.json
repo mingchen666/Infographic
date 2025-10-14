@@ -1,6 +1,6 @@
 {
   "name": "@alipay/infographic-dev",
-  "version": "0.0.1-beta.3",
+  "version": "0.0.1-beta.5",
   "description": "AntV Infographic generator and visualization library",
   "keywords": [
     "antv",
@@ -32,7 +32,7 @@
     "src"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b -f tsconfig.json",
     "build:watch": "tsc -p tsconfig.json --watch",
     "check:test": "tsc --noEmit -p __tests__",
     "ci": "run-s test build lint",
@@ -57,7 +57,7 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.antgroup-inc.cn/",
+    "registry": "https://registry.antgroup-inc.cn",
     "tag": "latest"
   }
 }

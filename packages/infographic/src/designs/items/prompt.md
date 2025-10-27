@@ -93,28 +93,83 @@ export interface ThemeColors {
 
 统一使用 `x`, `y`, `width`, `height` 属性定位和设置尺寸：
 
-- **Defs**: SVG 定义容器
-- **Ellipse**: 椭圆 `<Ellipse x={0} y={0} width={100} height={100} />`
-  - **重要**: `x`, `y` 为椭圆的左上角位置，不是圆心坐标
+- **Defs**: SVG 定义容器，用于定义渐变、图案等可复用的 SVG 元素
+
+- **Rect**: 矩形
+
+> 其余属性与 React SVG rect 一致
+
+- **Ellipse**: 椭圆/圆形
+
+> 其余属性与 React SVG circle 一致
+
+- **重要**: `x`, `y` 为椭圆的左上角位置，不是圆心坐标
+
+- **Path**: 路径图形
+
+> 其余属性与 React SVG path 一致
+
+- **Polygon**: 多边形
+
+  ```typescript
+  import { Point } from '@antv/infographic-jsx';
+  <Polygon points={[{x: 0, y: 0}, {x: 100, y: 0}, {x: 50, y: 100}]} fill={color} />
+  ```
+
+> 其余属性与 React SVG polygon 一致
+
 - **Group**: 分组容器
-- **Path**: 路径图形 `<Path d="..." x={0} y={0} width={30} height={30} />`
-- **Polygon**: 多边形 `<Polygon points={[{x: 0, y: 0}, {x: 100, y: 0}]} />`
-- **Rect**: 矩形 `<Rect x={0} y={0} width={100} height={50} rx={5} />`
-- **Text**: 文本 `<Text x={0} y={0} fontSize={14}>内容</Text>`
-  - **重要**: 文本内容写作子节点，不使用 `text` 属性
-  - **alignVertical**: 只支持 "top" | "bottom" | "center"，不支持 "middle"
+
+  ```typescript
+  <Group x={0} y={0} width={100} height={100}>
+    {children}
+  </Group>
+  ```
+
+  > Group 的宽高不会有任何约束作用，仅用于获取包围盒，如果未设置，则会基于子节点计算包围盒
+  > 其余属性与 React SVG group 一致
+
+- **Text**: 文本
+
+  ```typescript
+  <Text x={0} y={0} fontSize={14} fill={color}>
+    内容
+  </Text>
+  ```
+
+  扩展属性：
+  - **alignHorizontal**: "left" | "center" | "right"，水平对齐位置
+  - **alignVertical**: "top" | "bottom" | "center"，垂直对齐位置
+  - **lineHeight**: 行高，默认 1.2
+  - **wordWrap**: 是否换行，默认 false
+  - **backgroundColor**: 背景色
+
+> 其余属性与 React SVG text 一致
 
 **封装组件 (从 ../components 导入)**
 
-- **ItemIcon**: 数据项图标
+- **ItemIcon**: 数据项图标（方形）
 
   ```typescript
   <ItemIcon
     indexes={indexes}
     x={0}
     y={0}
-    size={30}  // 或 width/height
-    fill="#fff"
+    size={30}
+    fill={themeColors.colorPrimary}
+  />
+  ```
+
+- **ItemIconCircle**: 数据项图标（圆形背景容器）
+
+  ```typescript
+  <ItemIconCircle
+    indexes={indexes}
+    x={0}
+    y={0}
+    size={50}
+    fill={themeColors.colorPrimary}      // 圆形背景色
+    colorBg={themeColors.colorWhite}     // 内部图标背景色
   />
   ```
 
@@ -172,6 +227,7 @@ export interface ThemeColors {
   ```
 
 - **Illus**: 插图组件
+
   ```typescript
   <Illus
     x={0}
@@ -180,6 +236,44 @@ export interface ThemeColors {
     height={100}
   />
   ```
+
+- **Gap**: 布局间距占位符
+
+  ```typescript
+  <Gap width={10} height={10} />
+  ```
+
+  - **重要**: 只能直接使用 `<Gap />`，不能通过 `const gap = <Gap />` 这种方式使用
+
+**布局组件 (从 ../layouts 导入)**
+
+- **FlexLayout**: Flex 弹性布局
+
+  ```typescript
+  <FlexLayout
+    flexDirection="row" | "column"
+    gap={8}
+    alignItems="flex-start" | "center" | "flex-end"
+  >
+    {children}
+  </FlexLayout>
+  ```
+
+- **AlignLayout**: 对齐布局
+
+> 例如可以将子元素水平和垂直对齐（元素可能会发生重叠）
+> 也可以单独执行 horizontal 或 vertical 对齐，另一方向位置保持不变
+
+```typescript
+<AlignLayout
+  horizontal="left" | "center" | "right"
+  vertical="top" | "center" | "bottom"
+  width={100}   // 可选，对齐容器尺寸
+  height={100}  // 可选，对齐容器尺寸
+>
+  {children}
+</AlignLayout>
+```
 
 ### 3. 工具函数
 
@@ -204,6 +298,7 @@ export interface ThemeColors {
   ```
 
 - **getItemId**: 生成组件 ID
+
   ```typescript
   // function getItemId(indexes: number[], type: 'static' | 'shape' | 'def' | 'shapes-group', appendix?: string): string
   const id = getItemId(indexes, 'shape', 'item');
@@ -211,17 +306,52 @@ export interface ThemeColors {
   // 如果 type 为 shape，那么后续可以被渲染器进行二次着色或者风格化处理
   ```
 
+- **getItemKeyFromIndexes**: 从索引数组生成 key
+  ```typescript
+  import { getItemKeyFromIndexes } from '../../utils';
+  const key = getItemKeyFromIndexes([0, 1]); // "0-1"
+  ```
+
 ### 4. 第三方库支持
 
 可以导入以下库来增强功能：
 
-- **d3**: 数据处理和比例尺 `import { scaleLinear } from 'd3';`
-- **lodash-es**: 工具函数（推荐按需导入）
+- **d3**:
+
   ```typescript
-  import { max, min, groupBy } from 'lodash-es';
+  import { xxx } from 'd3';
   ```
-- **culori**: 颜色处理 `import { interpolate } from 'culori';`
-- **round-polygon**: 圆角多边形 `import roundPolygon from 'round-polygon';`
+
+- **lodash-es**: 工具函数（推荐按需导入）
+
+  ```typescript
+  import { xxx } from 'lodash-es';
+  ```
+
+- **tinycolor2**: 颜色处理
+
+  ```typescript
+  import tinycolor from 'tinycolor2';
+
+  // 实例方法 - 链式调用
+  tinycolor(color).darken(20).toHexString();
+  tinycolor(color).lighten(10).toHexString();
+
+  // 静态方法 - 混合颜色
+  tinycolor.mix(themeColors.colorPrimary, '#fff', 40).toHexString();
+
+  // 克隆方法 - 避免修改原对象
+  const base = tinycolor(baseColor);
+  const gradStart = base.clone().darken(4).toHexString();
+  const gradEnd = base.clone().lighten(12).toHexString();
+  ```
+
+- **round-polygon**: 圆角多边形处理
+  ```typescript
+  import roundPolygon, { getSegments } from 'round-polygon';
+  const rounded = roundPolygon(points, radius);
+  const segments = getSegments(rounded, 'AMOUNT', 10);
+  ```
 
 ### 5. 导入模板
 
@@ -229,46 +359,52 @@ export interface ThemeColors {
 /** @jsxImportSource @antv/infographic-jsx */
 import { ComponentType, Group } from '@antv/infographic-jsx';
 
-// 根据需要选择性导入原子组件
+// 根据需要选择性导入原子组件和类型
 import {
-  xxx,
-  // getElementBounds,
-  // Defs,
-  // Ellipse,
-  // Path,
-  // Polygon,
-  // Rect,
-  // Text,
+  getElementBounds,
+  Defs,
+  Ellipse,
+  Path,
+  type Point, // Polygon 需要的点类型
+  Polygon,
+  Rect,
+  Text,
 } from '@antv/infographic-jsx';
 
 // 根据需要选择性导入封装组件
 import {
-  xxx,
-  // Illus,
-  // ItemDesc,
-  // ItemIcon,
-  // ItemLabel,
-  // ItemValue,
+  Gap,
+  Illus,
+  ItemDesc,
+  ItemIcon,
+  ItemIconCircle,
+  ItemLabel,
+  ItemValue,
 } from '../components';
+
+// 根据需要选择性导入布局组件
+import { AlignLayout, FlexLayout } from '../layouts';
 
 import { registerItem } from './registry';
 import type { BaseItemProps } from './types';
 import { getItemProps, getItemId } from './utils';
 
 // 根据需要导入第三方库
-// import { scaleLinear } from 'd3';
+// import { xxx } from 'd3';
 // import tinycolor from 'tinycolor2';
-// import { max, min } from 'lodash-es';
+// import { xxxx } from 'lodash-es';
+// import roundPolygon, { xxx } from 'round-polygon';
 ```
 
 ### 6. 组件结构模板
 
 ```typescript
 export interface [ItemName]Props extends BaseItemProps {
+  // 除 BaseItemProps 外的自定义参数（gap 等根据设计需求自定义）
   width?: number;
   height?: number;
   iconSize?: number;
-  // 其他自定义参数（gap 等根据设计需求自定义）
+  // 其他自定义参数
 }
 
 export const [ItemName]: ComponentType<[ItemName]Props> = (props) => {
@@ -283,6 +419,7 @@ export const [ItemName]: ComponentType<[ItemName]Props> = (props) => {
       positionH = 'normal',
       positionV = 'normal',
       themeColors,
+      valueFormatter = (v: any) => `${v}%`,  // 可以设置默认格式化函数
       // 其他自定义参数
     },
     restProps,
@@ -305,24 +442,41 @@ export const [ItemName]: ComponentType<[ItemName]Props> = (props) => {
       {/* Defs 定义（如果需要渐变） */}
 
       {/* 主要形状和内容 */}
-      <ItemIcon indexes={indexes} {...iconProps} />
-      <ItemLabel indexes={indexes} {...labelProps}>
-        {datum.label}
-      </ItemLabel>
+      {datum.icon && <ItemIcon indexes={indexes} {...iconProps} />}
+
+      {datum.label !== undefined && (
+        <ItemLabel 
+          indexes={indexes}
+          x={/** 计算 X 坐标 */}
+          y={/** 计算 Y 坐标 */}
+          {...labelProps}>
+          {datum.label}
+        </ItemLabel>
+      )}
 
       {/* 数值 - 条件渲染 */}
       {value !== undefined && (
-        <ItemValue indexes={indexes} value={displayValue} formatter={valueFormatter} {...valueProps} />
+        <ItemValue
+          indexes={indexes}
+          x={/** 计算 X 坐标 */}
+          y={/** 计算 Y 坐标 */}
+          value={displayValue}
+          formatter={valueFormatter}
+          {...valueProps}
+        />
       )}
 
       {/* 描述 - 动态布局 */}
-      <ItemDesc
-        indexes={indexes}
-        y={value !== undefined ? withValueY : withoutValueY}
-        {...descProps}
-      >
-        {datum.desc}
-      </ItemDesc>
+      {datum.desc !== undefined && (
+        <ItemDesc
+          indexes={indexes}
+          x={/** 计算 X 坐标 */}
+          y={/** 计算 Y 坐标 */}
+          {...descProps}
+        >
+          {datum.desc}
+        </ItemDesc>
+      )}
     </Group>
   );
 };
@@ -342,9 +496,20 @@ registerItem('[item-name]', { component: [ItemName] });
 
 这个索引系统确保每个数据项都有唯一标识。
 
+**索引的常用操作**：
+
+```typescript
+// 生成序号
+const indexNumber = indexes[0] + 1;
+const indexStr = String(indexes[0] + 1).padStart(2, '0'); // "01", "02", ...
+
+// 判断奇偶（用于交替样式）
+const isEven = indexes[0] % 2 === 0;
+```
+
 ### 8. 关键设计原则
 
-根据对齐方式调整元素位置：
+#### positionH/positionV 处理
 
 > 不一定需要处理 positionH/V，但如果设计中有对齐需求，则需要进行适配。
 
@@ -364,6 +529,14 @@ const iconY =
     : positionV === 'flipped'
       ? height - iconSize
       : 0;
+
+// 文本对齐方式
+const textAlign =
+  positionH === 'flipped'
+    ? 'right'
+    : positionH === 'center'
+      ? 'center'
+      : 'left';
 ```
 
 #### 主题色彩使用
@@ -381,29 +554,138 @@ fill={themeColors.colorText}
 // 次要文本
 fill={themeColors.colorTextSecondary}
 
-// 渐变示例 - 注意正确的 tinycolor 使用方式
+// 白色（常用于深色背景上的图标/文字）
+fill={themeColors.colorWhite}
+```
+
+#### 渐变定义
+
+**线性渐变**：
+
+```typescript
 const gradientId = `${themeColors.colorPrimary}-component-name`;
 <Defs>
-  <linearGradient id={gradientId}>
+  <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
     <stop offset="0%" stopColor={themeColors.colorPrimary} />
-    <stop offset="100%" stopColor={tinycolor(themeColors.colorPrimary).lighten(20).toHexString()} />
-    {/* 或 tinycolor.mix(themeColors.colorPrimary, '#fff', 40).toHexString() */}
+    <stop
+      offset="100%"
+      stopColor={tinycolor.mix(themeColors.colorPrimary, '#fff', 40).toHexString()}
+    />
   </linearGradient>
-</Defs>
+</Defs>;
+
+// 使用渐变
+<Rect fill={`url(#${gradientId})`} {...props} />;
+```
+
+**径向渐变**：
+
+```typescript
+const radialId = `${themeColors.colorPrimary}-radial`;
+<Defs>
+  <radialGradient id={radialId} cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stopColor={themeColors.colorPrimary} />
+    <stop
+      offset="100%"
+      stopColor={tinycolor(themeColors.colorPrimary).darken(20).toHexString()}
+    />
+  </radialGradient>
+</Defs>;
+```
+
+**多渐变定义**：
+
+```typescript
+// 为不同用途定义多个渐变
+const progressGradientId = `${themeColors.colorPrimary}-progress`;
+const backgroundGradientId = `${themeColors.colorPrimaryBg}-progress-bg`;
+const positiveGradient = `gradient-${themeColors.colorPrimary}-positive`;
+const negativeGradient = `gradient-${themeColors.colorPrimary}-negative`;
+
+<Defs>
+  <linearGradient id={progressGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stopColor={themeColors.colorPrimary} />
+    <stop
+      offset="100%"
+      stopColor={tinycolor.mix(themeColors.colorPrimary, '#fff', 20).toHexString()}
+    />
+  </linearGradient>
+  <linearGradient id={backgroundGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stopColor={themeColors.colorPrimaryBg} />
+    <stop offset="100%" stopColor={themeColors.colorBg} />
+  </linearGradient>
+</Defs>;
+```
+
+**SVG 图案填充**：
+
+```typescript
+// 基于索引生成唯一 ID（用于必须唯一的场景）
+const uniqueId = `letter-card-${indexes.join('-')}`;
+const patternId = `${uniqueId}-pattern`;
+
+<Defs>
+  <pattern
+    id={patternId}
+    patternUnits="userSpaceOnUse"
+    width={10}
+    height={10}
+    patternTransform={`rotate(45)`}
+  >
+    {/* 注意：pattern 内部使用小写的原生 SVG 元素 */}
+    <rect x="0" y="0" width={4} height={10} fill="rgba(0, 0, 0, 0.03)" />
+  </pattern>
+</Defs>;
+
+// 使用图案
+<Rect fill={`url(#${patternId})`} {...props} />;
 ```
 
 #### 响应式尺寸
 
 ```typescript
 // 基于内容动态调整
-const labelBounds = getElementBounds(<ItemLabel indexes={indexes} />);
+const labelBounds = getElementBounds(
+  <ItemLabel indexes={indexes}>{datum.label}</ItemLabel>,
+);
 const totalHeight = iconSize + gap + labelBounds.height;
 
 // 基于数据集合计算比例
-const values = data.items.map(item => item.value ?? 0);
+const values = data.items.map((item) => item.value ?? 0);
 const maxValue = Math.max(...values);
 const barHeight = (value / maxValue) * availableHeight;
 ```
+
+#### 复杂 SVG 路径绘制
+
+```typescript
+// 1/4 圆弧路径
+const quarterCirclePath = isFlipped
+  ? `M ${x} ${y} L ${x} ${y + r} A ${r} ${r} 0 0 0 ${x + r} ${y} Z`
+  : `M ${x} ${y} L ${x} ${y + r} A ${r} ${r} 0 0 1 ${x - r} ${y} Z`;
+
+<Path d={quarterCirclePath} fill={themeColors.colorPrimary} />;
+
+// 箭头多边形
+<Polygon
+  points={[
+    { x: 0, y: 0 },
+    { x: width - 10, y: 0 },
+    { x: width, y: height / 2 }, // 箭头尖端
+    { x: width - 10, y: height },
+    { x: 0, y: height },
+    { x: 10, y: height / 2 },
+  ]}
+  fill={themeColors.colorPrimary}
+/>;
+```
+
+**SVG 路径命令参考**：
+
+- `M x y` - 移动到
+- `L x y` - 直线到
+- `A rx ry x-axis-rotation large-arc-flag sweep-flag x y` - 弧线
+- `Z` - 闭合路径
 
 ### 9. 约束规则
 
@@ -411,18 +693,22 @@ const barHeight = (value / maxValue) * availableHeight;
 
 1. **只使用列出的组件和属性**
 2. **所有图形组件使用 x/y/width/height 定位**
-3. **必须传递 indexes 给所有封装组件**
+3. **必须传递 indexes 给所有封装组件**（ItemIcon、ItemLabel、ItemDesc、ItemValue 等）
 4. **使用 getItemProps 处理 props**
 5. **使用 getItemId 生成唯一 ID**，但渐变 ID 建议基于颜色生成以便复用
-6. **tinycolor 正确使用**：`tinycolor(color).method()` 而不是 `tinycolor.method()`
-7. **支持 positionH/V 对齐方式**
+6. **tinycolor 正确使用**：
+   - 实例方法：`tinycolor(color).darken(20).toHexString()`
+   - 静态方法：`tinycolor.mix(color1, color2, amount).toHexString()`
+7. **支持 positionH/V 对齐方式**（根据设计需求）
 8. **避免出现元素坐标为负值的情况**
+9. **条件渲染可选元素**（icon、label、desc、value）
 
 ### 10. 命名规范
 
 - 组件名：大驼峰，如 `DoneList`, `ChartColumn`
 - 注册名：小写连字符，如 `done-list`, `chart-column`
 - Props 接口：组件名 + `Props`
+- 常量：大写下划线，如 `CIRCLE_MASS`, `DOT_RADIUS`
 
 ## 代码生成要求
 
@@ -440,6 +726,7 @@ const barHeight = (value / maxValue) * availableHeight;
 4. **灵活性**：
    - 参数有合理默认值
    - 处理边界情况（空数据、缺失字段等）
+   - 条件渲染可选元素
    - 支持 positionH/V 对齐
    - 响应式尺寸设计
 
@@ -468,7 +755,9 @@ const barHeight = (value / maxValue) * availableHeight;
 
 ```typescript
 const value = datum.value ?? 0; // value 永远不为 undefined
-{value !== undefined && <ItemValue value={value} />} // 条件永远为 true
+{
+  value !== undefined && <ItemValue value={value} />; // 条件永远为 true
+}
 ```
 
 ✅ **正确做法**：
@@ -476,7 +765,9 @@ const value = datum.value ?? 0; // value 永远不为 undefined
 ```typescript
 const value = datum.value; // 保持原始值
 const displayValue = value ?? 0; // 用于显示
-{value !== undefined && <ItemValue value={displayValue} />} // 条件渲染正确
+{
+  value !== undefined && <ItemValue value={displayValue} />; // 条件渲染正确
+}
 ```
 
 ### 渐变 ID 生成
@@ -490,7 +781,12 @@ const gradientId = getItemId(indexes, 'def', 'gradient'); // 基于索引，无�
 ✅ **正确做法**：
 
 ```typescript
-const gradientId = `${themeColors.colorPrimary}-component-name`; // 基于颜色，可复用
+// 推荐：基于颜色和用途（可复用）
+const gradientId = `${themeColors.colorPrimary}-progress`;
+
+// 或基于索引（用于必须唯一的场景）
+const uniqueId = `letter-card-${indexes.join('-')}`;
+const gradientId = `${uniqueId}-gradient`;
 ```
 
 ### tinycolor 使用
@@ -499,25 +795,61 @@ const gradientId = `${themeColors.colorPrimary}-component-name`; // 基于颜色
 
 ```typescript
 tinycolor.darken(color, 20); // 静态方法不存在
+tinycolor.lighten(color, 10); // 静态方法不存在
 ```
 
 ✅ **正确做法**：
 
 ```typescript
-tinycolor(color).darken(20).toHexString(); // 实例方法
+// 实例方法 - 链式调用
+tinycolor(color).darken(20).toHexString();
+tinycolor(color).lighten(10).toHexString();
+
+// 静态方法 - 混合颜色
+tinycolor.mix(themeColors.colorPrimary, '#fff', 40).toHexString();
+
+// 克隆方法 - 避免修改原对象
+const base = tinycolor(baseColor);
+const gradStart = base.clone().darken(4).toHexString();
+const gradEnd = base.clone().lighten(12).toHexString();
 ```
 
 ### 动态布局示例
 
 ```typescript
 // 描述位置根据是否有数值动态调整
-const descY = value !== undefined
-  ? labelY + labelHeight + valueHeight + gap
-  : labelY + labelHeight + smallGap;
+const descY = value !== undefined ? labelY + labelHeight + valueHeight + gap : labelY + labelHeight + smallGap;
 
-<ItemDesc y={descY}>
+<ItemDesc indexes={indexes} y={descY}>
   {datum.desc}
-</ItemDesc>
+</ItemDesc>;
+
+// 内容宽度根据图标存在与否调整
+const textWidth = showIcon && datum.icon ? width - iconSize - gap : width;
+
+<ItemLabel indexes={indexes} width={textWidth}>
+  {datum.label}
+</ItemLabel>;
+```
+
+### 常用工具函数和技巧
+
+```typescript
+// 字符串格式化
+String(indexes[0] + 1).padStart(2, '0'); // "01", "02", ...
+datum.label?.[0].toUpperCase(); // 可选链 + 首字母大写
+
+// 数学常量
+Math.SQRT2; // √2 ≈ 1.414
+Math.PI; // π ≈ 3.14159
+
+// 计算圆的质心（用于圆弧图形）
+const CIRCLE_MASS = (4 * radius) / (3 * Math.PI);
+
+// 圆环进度计算
+const radius = (size - strokeWidth) / 2;
+const circumference = 2 * Math.PI * radius;
+const strokeDashoffset = circumference * (1 - percentage);
 ```
 
 现在，请告诉我你想要生成什么类型的数据项组件？

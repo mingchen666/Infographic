@@ -1,5 +1,5 @@
 {
-  "name": "@antv/infographic-dev",
+  "name": "@antv/infographic-site",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
@@ -110,5 +110,6 @@
   "lint-staged": {
     "*.{js,ts,jsx,tsx,css}": "npm run prettier",
     "src/**/*.md": "npm run fix-headings"
-  }
+  },
+  "repository": "git@github.com:antvis/Infographic.git"
 }

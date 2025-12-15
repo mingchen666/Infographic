@@ -1,7 +1,9 @@
 import {InfographicOptions} from '@antv/infographic';
+import {CopyToast, useCopyToast} from 'components/CopyToast';
 import {Page} from 'components/Layout/Page';
-import {AnimatePresence, motion} from 'framer-motion';
-import {useEffect, useRef, useState} from 'react';
+import {motion} from 'framer-motion';
+import {useRouter} from 'next/router';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {IconStarTwinkle} from '../Icon/IconStarTwinkle';
 import {ChatPanel} from './ChatPanel';
 import {ConfigPanel} from './ConfigPanel';
@@ -124,6 +126,7 @@ const normalizeStoredHistory = (raw: any): HistoryRecord[] => {
 };
 
 export function AIPageContent() {
+  const router = useRouter();
   const [prompt, setPrompt] = useState('');
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [config, setConfig] = useState<AIConfig>(DEFAULT_CONFIG);
@@ -137,13 +140,14 @@ export function AIPageContent() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'preview' | 'json'>('preview');
   const [lastJSON, setLastJSON] = useState('');
-  const [copyHint, setCopyHint] = useState('');
   const [mounted, setMounted] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recoveredPendingRef = useRef(false);
+  const autoStartRef = useRef(false);
+  const [hasHydrated, setHasHydrated] = useState(false);
   const PANEL_HEIGHT_CLASS = 'min-h-[520px] h-[640px] max-h-[75vh]';
+  const {message: copyHint, show: showCopyHint} = useCopyToast();
 
   useEffect(() => {
     setMounted(true);
@@ -187,11 +191,7 @@ export function AIPageContent() {
         setPreviewOptions(null);
       }
     }
-    return () => {
-      if (copyTimerRef.current) {
-        clearTimeout(copyTimerRef.current);
-      }
-    };
+    setHasHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -240,141 +240,169 @@ export function AIPageContent() {
 
   const effectivePreview = previewOptions || FALLBACK_OPTIONS;
 
-  const requestInfographic = async (content: string, userId: string) => {
-    setIsGenerating(true);
-    setHistory((prev) =>
-      prev.map((item) =>
-        item.id === userId
-          ? {...item, status: 'pending', error: undefined, config: undefined}
-          : item
-      )
-    );
-
-    try {
-      const modelConfig: AIModelConfig = {
-        provider: config.provider,
-        baseURL: config.baseUrl.replace(/\/$/, ''),
-        apiKey: config.apiKey,
-        model: config.model || DEFAULT_CONFIG.model,
-      };
-
-      const payloadMessages: Array<{
-        role: 'user' | 'assistant' | 'system';
-        content: string;
-      }> = [
-        {
-          role: 'user',
-          content,
-        },
-      ];
-
-      const resMsg = await sendMessage(modelConfig, payloadMessages);
-      let parsedConfig: Partial<InfographicOptions> | null = null;
-      let parseError = '';
+  const requestInfographic = useCallback(
+    async (content: string, userId: string) => {
+      setIsGenerating(true);
+      setHistory((prev) =>
+        prev.map((item) =>
+          item.id === userId
+            ? {...item, status: 'pending', error: undefined, config: undefined}
+            : item
+        )
+      );
 
       try {
-        const match = resMsg.match(/```(?:json)?\s*([\s\S]*?)```/);
-        const candidate = match ? match[1] : resMsg;
-        const raw = JSON.parse(candidate);
-        parsedConfig =
-          raw && typeof raw === 'object' && 'config' in raw
-            ? (raw as {config: Partial<InfographicOptions>}).config
-            : (raw as Partial<InfographicOptions>);
-      } catch (err) {
-        if (resMsg.includes('{')) {
-          parseError = '无法解析模型返回内容';
-        } else {
-          parseError = resMsg;
+        const modelConfig: AIModelConfig = {
+          provider: config.provider,
+          baseURL: config.baseUrl.replace(/\/$/, ''),
+          apiKey: config.apiKey,
+          model: config.model || DEFAULT_CONFIG.model,
+        };
+
+        const payloadMessages: Array<{
+          role: 'user' | 'assistant' | 'system';
+          content: string;
+        }> = [
+          {
+            role: 'user',
+            content,
+          },
+        ];
+
+        const resMsg = await sendMessage(modelConfig, payloadMessages);
+        let parsedConfig: Partial<InfographicOptions> | null = null;
+        let parseError = '';
+
+        try {
+          const match = resMsg.match(/```(?:json)?\s*([\s\S]*?)```/);
+          const candidate = match ? match[1] : resMsg;
+          const raw = JSON.parse(candidate);
+          parsedConfig =
+            raw && typeof raw === 'object' && 'config' in raw
+              ? (raw as {config: Partial<InfographicOptions>}).config
+              : (raw as Partial<InfographicOptions>);
+        } catch (err) {
+          if (resMsg.includes('{')) {
+            parseError = '无法解析模型返回内容';
+          } else {
+            parseError = resMsg;
+          }
         }
+
+        setHistory((prev) =>
+          prev.map((item) =>
+            item.id === userId
+              ? {
+                  ...item,
+                  status: parsedConfig ? 'ready' : 'error',
+                  error: parsedConfig ? undefined : parseError,
+                  config: parsedConfig || undefined,
+                }
+              : item
+          )
+        );
+
+        if (parsedConfig) {
+          setPreviewOptions(parsedConfig);
+          setPreviewError(null);
+          setLastJSON(formatJSON(parsedConfig));
+          setActiveTab('preview');
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : '生成失败，请检查网络或稍后重试。';
+
+        setHistory((prev) =>
+          prev.map((item) =>
+            item.id === userId
+              ? {...item, status: 'error', error: message, config: undefined}
+              : item
+          )
+        );
+      } finally {
+        setIsGenerating(false);
+        inputRef.current?.focus();
+      }
+    },
+    [config]
+  );
+
+  const handleSend = useCallback(
+    async (value?: string) => {
+      const content = (value ?? prompt).trim();
+      if (!content) return;
+
+      const targetId =
+        retryingId && history.some((item) => item.id === retryingId)
+          ? retryingId
+          : null;
+      let requestId: string;
+
+      if (targetId) {
+        requestId = targetId;
+        setHistory((prev) =>
+          prev.map((item) =>
+            item.id === targetId
+              ? {
+                  ...item,
+                  text: content,
+                  title: createTitle(content),
+                  status: 'pending',
+                  error: undefined,
+                  config: undefined,
+                }
+              : item
+          )
+        );
+      } else {
+        const newRecord = toHistoryRecord({
+          id: createId(),
+          text: content,
+          status: 'pending',
+        });
+        requestId = newRecord.id;
+        setHistory((prev) => [...prev, newRecord]);
       }
 
-      setHistory((prev) =>
-        prev.map((item) =>
-          item.id === userId
-            ? {
-                ...item,
-                status: parsedConfig ? 'ready' : 'error',
-                error: parsedConfig ? undefined : parseError,
-                config: parsedConfig || undefined,
-              }
-            : item
-        )
-      );
-
-      if (parsedConfig) {
-        setPreviewOptions(parsedConfig);
-        setPreviewError(null);
-        setLastJSON(formatJSON(parsedConfig));
-        setActiveTab('preview');
+      setPrompt('');
+      if (retryingId) {
+        setRetryingId(null);
       }
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : '生成失败，请检查网络或稍后重试。';
 
-      setHistory((prev) =>
-        prev.map((item) =>
-          item.id === userId
-            ? {...item, status: 'error', error: message, config: undefined}
-            : item
-        )
-      );
-    } finally {
-      setIsGenerating(false);
-      inputRef.current?.focus();
-    }
-  };
+      await requestInfographic(content, requestId);
+    },
+    [prompt, retryingId, history, requestInfographic]
+  );
 
-  const handleSend = async (value?: string) => {
-    const content = (value ?? prompt).trim();
-    if (!content) return;
+  useEffect(() => {
+    if (!router.isReady || autoStartRef.current || !hasHydrated) return;
+    const rawPrompt = router.query.prompt;
+    const incoming = Array.isArray(rawPrompt)
+      ? rawPrompt.join(' ')
+      : rawPrompt || '';
+    const normalized = incoming.replace(/\+/g, ' ').trim();
+    if (!normalized) return;
 
-    const targetId =
-      retryingId && history.some((item) => item.id === retryingId)
-        ? retryingId
-        : null;
-    let requestId: string;
+    autoStartRef.current = true;
+    setPrompt(normalized);
+    void handleSend(normalized);
+    const {prompt: _omit, ...rest} = router.query;
+    void router.replace(
+      {
+        pathname: router.pathname,
+        query: rest,
+      },
+      undefined,
+      {shallow: true}
+    );
+  }, [router, router.isReady, router.query.prompt, hasHydrated, handleSend]);
 
-    if (targetId) {
-      requestId = targetId;
-      setHistory((prev) =>
-        prev.map((item) =>
-          item.id === targetId
-            ? {
-                ...item,
-                text: content,
-                title: createTitle(content),
-                status: 'pending',
-                error: undefined,
-                config: undefined,
-              }
-            : item
-        )
-      );
-    } else {
-      const newRecord = toHistoryRecord({
-        id: createId(),
-        text: content,
-        status: 'pending',
-      });
-      requestId = newRecord.id;
-      setHistory((prev) => [...prev, newRecord]);
-    }
-
-    setPrompt('');
-    if (retryingId) {
-      setRetryingId(null);
-    }
-
-    await requestInfographic(content, requestId);
-  };
-
-  const handleCopyHint = (hint: string) => {
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    setCopyHint(hint);
-    copyTimerRef.current = setTimeout(() => setCopyHint(''), 1500);
-  };
+  const handleCopyHint = useCallback(
+    (hint: string) => showCopyHint(hint),
+    [showCopyHint]
+  );
 
   const handleClear = () => {
     setHistory([]);
@@ -431,19 +459,25 @@ export function AIPageContent() {
       toc={[]}
       routeTree={{title: 'AI', path: '/ai', routes: []}}
       meta={{title: 'AI 生成信息图'}}
-      section="ai">
+      section="ai"
+      topNavOptions={{
+        hideBrandWhenHeroVisible: true,
+        overlayOnHome: true,
+        heroAnchorId: 'ai-hero-anchor',
+      }}>
       <div className="relative isolate overflow-hidden bg-wash dark:bg-wash-dark">
         {/* Background decorations */}
         <div className="pointer-events-none absolute -left-32 -top-40 h-96 w-96 rounded-full bg-gradient-to-br from-link/20 via-link/5 to-transparent blur-3xl" />
         <div className="pointer-events-none absolute -right-32 top-20 h-96 w-96 rounded-full bg-gradient-to-br from-purple-40/15 via-transparent to-link/5 blur-3xl" />
 
-        <div className="relative mx-auto max-w-7xl px-5 sm:px-12 py-12 lg:py-16 flex flex-col gap-12">
+        <div className="relative mx-auto max-w-7xl px-5 sm:px-12 py-12 lg:py-16 flex flex-col gap-4">
           {/* Header Section */}
           <motion.header
+            id="ai-hero-anchor"
             initial={{opacity: 0, y: 20}}
             animate={{opacity: 1, y: 0}}
             transition={{duration: 0.6, ease: 'easeOut'}}
-            className="max-w-4xl space-y-6">
+            className="space-y-6">
             <div>
               <h1 className="flex items-center gap-3 text-4xl md:text-5xl lg:text-6xl font-display font-bold leading-tight text-primary dark:text-primary-dark select-none">
                 <IconStarTwinkle className="w-10 h-10 md:w-12 md:h-12 text-link dark:text-link-dark" />
@@ -457,57 +491,10 @@ export function AIPageContent() {
               </h1>
             </div>
 
-            <p className="text-lg lg:text-xl text-secondary dark:text-secondary-dark max-w-3xl leading-relaxed select-none">
+            <p className="text-lg lg:text-xl text-secondary dark:text-secondary-dark leading-relaxed select-none">
               将你在日常写作、汇报或其他文字工作中遇到的内容粘贴到这里，AI
               会理解语境并为你生成相匹配的信息图方案
             </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <motion.button
-                whileHover={{y: -2, scale: 1.01}}
-                whileTap={{scale: 0.98, y: 0}}
-                onClick={() => setIsConfigOpen(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-link text-white dark:bg-link-dark hover:bg-opacity-90 text-sm font-semibold shadow-secondary-button-stroke active:scale-[.98] transition-all">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                配置模型服务
-              </motion.button>
-              <motion.button
-                whileHover={{y: -2, scale: 1.01}}
-                whileTap={{scale: 0.98, y: 0}}
-                onClick={handleClear}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-primary dark:text-primary-dark text-sm shadow-secondary-button-stroke dark:shadow-secondary-button-stroke-dark hover:bg-gray-40/5 active:bg-gray-40/10 hover:dark:bg-gray-60/5 active:dark:bg-gray-60/10 font-semibold active:scale-[.98] transition-all">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-                清空对话
-              </motion.button>
-            </div>
           </motion.header>
 
           <motion.section
@@ -532,6 +519,8 @@ export function AIPageContent() {
                 onSelectHistory={handleSelectHistory}
                 onRetry={handleRetry}
                 onDelete={handleDelete}
+                onOpenConfig={() => setIsConfigOpen(true)}
+                onClear={handleClear}
                 panelClassName={PANEL_HEIGHT_CLASS}
               />
 
@@ -551,18 +540,7 @@ export function AIPageContent() {
             </div>
           </motion.section>
 
-          <AnimatePresence>
-            {copyHint && (
-              <motion.div
-                initial={{opacity: 0, y: 12}}
-                animate={{opacity: 1, y: 0}}
-                exit={{opacity: 0, y: 12}}
-                transition={{duration: 0.25}}
-                className="fixed bottom-8 right-8 rounded-full bg-link dark:bg-link-dark text-white px-5 py-2.5 shadow-lg font-medium text-sm">
-                ✓ {copyHint}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <CopyToast message={copyHint} />
         </div>
       </div>
 

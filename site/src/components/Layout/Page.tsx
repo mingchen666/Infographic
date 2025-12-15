@@ -29,9 +29,21 @@ interface PageProps {
     version?: 'experimental' | 'canary';
     description?: string;
   };
-  section: 'learn' | 'reference' | 'examples' | 'ai' | 'home' | 'unknown';
+  section:
+    | 'learn'
+    | 'reference'
+    | 'examples'
+    | 'ai'
+    | 'icon'
+    | 'home'
+    | 'unknown';
   languages?: Languages | null;
   showFooter?: boolean;
+  topNavOptions?: {
+    hideBrandWhenHeroVisible?: boolean;
+    overlayOnHome?: boolean;
+    heroAnchorId?: string;
+  };
 }
 
 export function Page({
@@ -42,6 +54,7 @@ export function Page({
   section,
   languages = null,
   showFooter = true,
+  topNavOptions,
 }: PageProps) {
   const {asPath} = useRouter();
   const cleanedPath = asPath.split(/[\?\#]/)[0];
@@ -60,7 +73,7 @@ export function Page({
   } else {
     content = (
       <div className="ps-0">
-        {!['examples', 'ai'].includes(section) && (
+        {!['examples', 'ai', 'icon'].includes(section) && (
           <div>
             <PageHeading
               title={title}
@@ -73,13 +86,13 @@ export function Page({
         )}
         <div
           className={cn(
-            section === 'examples' || section === 'ai'
+            ['examples', 'ai', 'icon'].includes(section)
               ? 'px-0'
               : 'px-5 sm:px-12'
           )}>
           <div
             className={cn(
-              section === 'examples' || section === 'ai'
+              ['examples', 'ai', 'icon'].includes(section)
                 ? 'w-full'
                 : 'max-w-7xl mx-auto'
             )}>
@@ -104,7 +117,7 @@ export function Page({
     hasColumns = false;
     showSidebar = false;
     showToc = false;
-  } else if (section === 'examples' || section === 'ai') {
+  } else if (section === 'examples' || section === 'ai' || section === 'icon') {
     showToc = false;
     hasColumns = false;
     showSidebar = false;
@@ -114,6 +127,10 @@ export function Page({
   if (section === 'learn') {
     searchOrder = order;
   }
+
+  const topNavHideBrand = topNavOptions?.hideBrandWhenHeroVisible ?? isHomePage;
+  const topNavOverlay = topNavOptions?.overlayOnHome ?? isHomePage;
+  const topNavHeroAnchorId = topNavOptions?.heroAnchorId;
 
   return (
     <>
@@ -129,6 +146,9 @@ export function Page({
         section={section}
         routeTree={routeTree}
         breadcrumbs={breadcrumbs}
+        hideBrandWhenHeroVisible={topNavHideBrand}
+        overlayOnHome={topNavOverlay}
+        heroAnchorId={topNavHeroAnchorId}
       />
       <div
         className={cn(

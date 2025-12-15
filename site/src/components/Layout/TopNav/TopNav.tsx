@@ -8,6 +8,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -23,6 +24,9 @@ import {Logo} from '../../Logo';
 import {SidebarRouteTree} from '../Sidebar';
 import type {RouteItem} from '../getRouteMeta';
 import BrandMenu from './BrandMenu';
+
+const useIsoLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 declare global {
   interface Window {
@@ -125,14 +129,30 @@ export default function TopNav({
   routeTree,
   breadcrumbs,
   section,
+  hideBrandWhenHeroVisible = false,
+  overlayOnHome = false,
+  heroAnchorId = 'home-hero-brand',
 }: {
   routeTree: RouteItem;
   breadcrumbs: RouteItem[];
-  section: 'learn' | 'reference' | 'examples' | 'ai' | 'home' | 'unknown';
+  section:
+    | 'learn'
+    | 'reference'
+    | 'examples'
+    | 'ai'
+    | 'icon'
+    | 'home'
+    | 'unknown';
+  hideBrandWhenHeroVisible?: boolean;
+  overlayOnHome?: boolean;
+  heroAnchorId?: string;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHeroVisible, setIsHeroVisible] = useState(
+    () => hideBrandWhenHeroVisible
+  );
   const searchEnabled = false;
   const scrollParentRef = useRef<HTMLDivElement>(null);
   const {asPath} = useRouter();
@@ -199,9 +219,47 @@ export default function TopNav({
       setShowSearch(true);
     });
   }, []);
+
+  useIsoLayoutEffect(() => {
+    if (!hideBrandWhenHeroVisible) return;
+    const hero = document.getElementById(heroAnchorId || 'home-hero-brand');
+    if (!hero) {
+      setIsHeroVisible(false);
+      return;
+    }
+
+    const computeHeroVisible = () => {
+      const rect = hero.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight * 0.94; // mirrors rootMargin -6%
+    };
+
+    // Sync initial visibility to avoid logo flash before observer fires.
+    setIsHeroVisible(computeHeroVisible());
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => setIsHeroVisible(entry.isIntersecting));
+      },
+      {threshold: 0, rootMargin: '-6% 0px 0px 0px'}
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [hideBrandWhenHeroVisible, heroAnchorId]);
+
   const onCloseSearch = useCallback(() => {
     setShowSearch(false);
   }, []);
+
+  const isNavTransparent =
+    hideBrandWhenHeroVisible && isHeroVisible && !isScrolled && !isMenuOpen;
+
+  const wrapperClass = overlayOnHome
+    ? isMenuOpen
+      ? 'fixed inset-0 flex flex-col z-40'
+      : 'fixed top-0 inset-x-0 z-40'
+    : isMenuOpen
+    ? 'h-screen sticky top-0 lg:bottom-0 lg:h-screen flex flex-col shadow-nav dark:shadow-nav-dark z-20'
+    : 'z-40 sticky top-0';
 
   return (
     <>
@@ -213,19 +271,26 @@ export default function TopNav({
         />
       )}
       <div ref={scrollDetectorRef} />
-      <div
-        className={cn(
-          isMenuOpen
-            ? 'h-screen sticky top-0 lg:bottom-0 lg:h-screen flex flex-col shadow-nav dark:shadow-nav-dark z-20'
-            : 'z-40 sticky top-0'
-        )}>
+      <div className={cn(wrapperClass)}>
         <nav
           className={cn(
-            'duration-300 backdrop-filter backdrop-blur-lg backdrop-saturate-200 transition-shadow bg-opacity-90 items-center w-full flex justify-between bg-wash dark:bg-wash-dark dark:bg-opacity-95 px-1.5 lg:pe-5 lg:ps-4 z-40',
-            {'dark:shadow-nav-dark shadow-nav': isScrolled || isMenuOpen}
+            'duration-300 transition-shadow items-center w-full flex justify-between px-1.5 lg:pe-5 lg:ps-4 z-40',
+            isNavTransparent
+              ? 'bg-transparent shadow-none backdrop-blur-0 backdrop-filter-none'
+              : 'bg-wash dark:bg-wash-dark bg-opacity-90 dark:bg-opacity-95 backdrop-filter backdrop-blur-lg backdrop-saturate-200',
+            {
+              'dark:shadow-nav-dark shadow-nav':
+                (isScrolled || isMenuOpen) && !isNavTransparent,
+            }
           )}>
           <div className="flex items-center justify-between w-full h-16 gap-0 sm:gap-3">
-            <div className="flex flex-row 3xl:flex-1 items-centers">
+            <div
+              className={cn(
+                'flex flex-row 3xl:flex-1 items-centers transition-opacity duration-200',
+                hideBrandWhenHeroVisible && isHeroVisible
+                  ? 'opacity-0 pointer-events-none'
+                  : 'opacity-100'
+              )}>
               <button
                 type="button"
                 aria-label="Menu"
@@ -283,6 +348,9 @@ export default function TopNav({
             )}
             <div className="text-base justify-center items-center gap-1.5 flex 3xl:flex-1 flex-row 3xl:justify-end select-none">
               <div className="mx-2.5 gap-1.5 hidden lg:flex">
+                <NavItem isActive={section === 'home'} url="/">
+                  首页
+                </NavItem>
                 <NavItem isActive={section === 'learn'} url="/learn">
                   文档
                 </NavItem>
@@ -291,6 +359,9 @@ export default function TopNav({
                 </NavItem>
                 <NavItem isActive={section === 'examples'} url="/examples">
                   示例
+                </NavItem>
+                <NavItem isActive={section === 'icon'} url="/icon">
+                  图标
                 </NavItem>
                 <NavItem isActive={section === 'ai'} url="/ai">
                   <span className="inline-flex items-center justify-center gap-1.5">
@@ -378,6 +449,9 @@ export default function TopNav({
                 {/* No fallback UI so need to be careful not to suspend directly inside. */}
                 <Suspense fallback={null}>
                   <div className="ps-3 xs:ps-5 xs:gap-0.5 xs:text-base overflow-x-auto flex flex-row lg:hidden text-base font-bold text-secondary dark:text-secondary-dark">
+                    <NavItem isActive={section === 'home'} url="/">
+                      首页
+                    </NavItem>
                     <NavItem isActive={section === 'learn'} url="/learn">
                       文档
                     </NavItem>
@@ -388,6 +462,9 @@ export default function TopNav({
                     </NavItem>
                     <NavItem isActive={section === 'examples'} url="/examples">
                       示例
+                    </NavItem>
+                    <NavItem isActive={section === 'icon'} url="/icon">
+                      图标
                     </NavItem>
                     <NavItem isActive={section === 'ai'} url="/ai">
                       <span className="inline-flex items-center justify-center gap-1.5">
